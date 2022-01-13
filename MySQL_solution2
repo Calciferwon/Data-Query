@@ -1,0 +1,24 @@
+Select
+	UserID,
+    NumberLogons,
+    TotalActions
+From
+(
+	select PreQuery.UserID,
+		sum( PreQuery.NextLogon ) as NumberLogons,
+		count(*) as TotalActions
+	from
+		(  select v.UserID,
+               if( @LUser <> v.UserID OR @LDate < ( date( v.CreatedAt ) - Interval 1 day ), 1, 0 ) as NextLogon,
+               @LUser := v.UserID,
+               @LDate := date( v.CreatedAt )
+            from 
+               log v,
+               ( select @LUser := -1, @LDate := date(now()) ) AtVars 
+            order by
+               v.UserID,
+               v.CreatedAt  ) PreQuery
+    group by 
+       PreQuery.UserID
+       ) As m
+Where NumberLogons >= 3;

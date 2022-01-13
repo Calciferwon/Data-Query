@@ -1,0 +1,26 @@
+SET @i = 0;
+SET @last_dt = NULL;
+SET @last_user = NULL;
+Select
+	UserID,
+    number_of_days,
+    number_of_consec_logons
+from
+	(SELECT v.UserID,
+		COUNT(DISTINCT(DATE(CreatedAt))) number_of_days,
+		MAX(days) number_of_consec_logons
+	FROM
+		(
+		SELECT UserID, CreatedAt,
+				@i := IF(@last_user IS NULL OR @last_user <> UserID, 1, IF(@last_dt IS NULL OR (DATE(CreatedAt) - INTERVAL 1 DAY) > DATE(@last_dt), @i + 1, @i)) AS days,
+				@last_dt := DATE(CreatedAt),
+				@last_user := UserID
+		FROM
+			log
+		ORDER BY
+			UserID, CreatedAt
+			) v
+		GROUP BY
+			v.UserID
+            ) as d
+Where number_of_consec_logons >= 3;
